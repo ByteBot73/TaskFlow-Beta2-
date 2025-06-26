@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtered Tasks Modal
     const filteredTasksModal = document.getElementById('filtered-tasks-modal');
-    const filteredTasksList = document = document.getElementById('filtered-tasks-list');
+    const filteredTasksList = document.getElementById('filtered-tasks-list'); // Corrected redundant assignment
 
     const taskModal = document.getElementById('task-modal'); // Existing task create/edit modal
     const taskModalTitle = document.getElementById('task-modal-title');
@@ -662,6 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('loggedIn', 'true');
         localStorage.setItem('username', authData.username); // Store username
         localStorage.setItem('token', authData.token);     // Store JWT token
+        console.log('Login Success: Token and Username stored in localStorage.'); // Debugging log
 
         if (authSection) authSection.classList.add('hidden');
         if (appSection) appSection.classList.remove('hidden');
@@ -676,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Handles user logout.
      */
     function handleLogout() {
+        console.log('Logging out: Clearing localStorage.'); // Debugging log
         localStorage.removeItem('loggedIn');
         localStorage.removeItem('username');
         localStorage.removeItem('token'); // Clear JWT token
@@ -760,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 registerForm.classList.add('hidden');
                 loginForm['login-username'].value = username;
                 // Optionally auto-login after successful registration, if desired
-                handleLoginSuccess(data); // UNCOMMENTED THIS LINE
+                handleLoginSuccess(data); // This line auto-logs in the user after registration
             } else {
                 showToast(data.message || 'Registration failed.', 'error');
             }
