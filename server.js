@@ -1,384 +1,375 @@
-// server.js
-
-// Load environment variables from .env file
 require('dotenv').config();
-
-// Import necessary modules
 const express = require('express');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const path = require('path');
-const mongoose = require('mongoose'); // Import Mongoose
-// const bcrypt = require('bcryptjs'); // For password hashing
-// const jwt = require('jsonwebtoken'); // For JSON Web Tokens
 
-// Initialize the Express application
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_URI = process.env.DB_URI || 'mongodb://localhost:27017/taskmanager'; // MongoDB URI
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkeythatshouldbeverylongandrandom';
+const JWT_SECRET = process.env.JWT_SECRET;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// --- Database Connection ---
-mongoose.connect(DB_URI)
+// Middleware
+app.use(express.json()); // For parsing application/json
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+
+// CORS configuration (for development, adjust for production)
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*'); // Adjust this in production to your frontend URL
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
+// MongoDB Connection
+mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB connected successfully'))
-    .catch(err => console.error('MongoDB connection error:', err));
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        // Exit process if DB connection fails
+        process.exit(1); 
+    });
 
 // --- Mongoose Schemas ---
 
-// User Schema
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
-    password: { type: String, required: true } // In production, this should store a hashed password
-}, { timestamps: true }); // Add createdAt and updatedAt fields
+    password: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
 
-// Pre-save hook to hash password (uncomment when bcryptjs is used)
-// userSchema.pre('save', async function(next) {
-//     if (this.isModified('password')) {
-//         this.password = await bcrypt.hash(this.password, 10);
-//     }
-//     next();
-// });
-
-const User = mongoose.model('User', userSchema);
-
-// Category Schema
 const categorySchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-}, { timestamps: true });
+    name: { type: String, required: true, unique: false }, // Category names can be duplicated across users
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Link to user
+    createdAt: { type: Date, default: Date.now }
+});
+// Ensure a user cannot have duplicate category names
+categorySchema.index({ name: 1, userId: 1 }, { unique: true });
 
-const Category = mongoose.model('Category', categorySchema);
 
-// Task Schema
 const taskSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String, default: '' },
-    dueDate: { type: Date, default: null }, // Added due date field
+    dueDate: { type: Date, default: null },
     priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    completed: { type: Boolean, default: false }
-}, { timestamps: true });
-
-const Task = mongoose.model('Task', taskSchema);
-
-// --- Middleware ---
-app.use(express.json()); // Parses incoming JSON payloads
-app.use(express.static(path.join(__dirname, 'public'))); // Serves static files
-
-// --- Authentication Middleware (Placeholder for JWT) ---
-function authenticateToken(req, res, next) {
-    const mockUserId = process.env.MOCK_USER_ID || '667be2d3a2b3c4d5e6f7a8b9'; // REPLACE THIS WITH A REAL USER ID FROM YOUR DB AFTER REGISTRATION
-
-    if (!mongoose.Types.ObjectId.isValid(mockUserId)) {
-        console.error('Invalid mock user ID format. Please use a valid ObjectId string. Ensure a user has been registered and its ID is set in .env or hardcoded temporarily.');
-        return res.status(401).json({ message: 'Authentication required. Please log in or register to get a valid user session.' });
-    }
-    req.userId = new mongoose.Types.ObjectId(mockUserId);
-    console.log('Authentication Middleware: req.userId set to', req.userId); // Debugging line
-    next();
-}
-
-// --- Helper for Date Filtering ---
-function getDatesForFilter(filter) {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Normalize to start of day
-
-    let startDate, endDate;
-
-    switch (filter) {
-        case 'today':
-            startDate = new Date(now);
-            endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 1); // Up to end of today (exclusive)
-            break;
-        case 'this-week':
-            const dayOfWeek = now.getDay(); // Sunday is 0, Saturday is 6
-            startDate = new Date(now);
-            startDate.setDate(now.getDate() - dayOfWeek); // Go to start of Sunday
-            endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 7); // Go to end of Saturday (exclusive)
-            break;
-        case 'upcoming':
-            startDate = new Date(now); // From today onwards (inclusive)
-            // No endDate means any date in the future
-            break;
-        case 'overdue':
-            endDate = new Date(now); // Any date before today (exclusive)
-            // No startDate means any date in the past
-            break;
-        default:
-            return {}; // No date filter
-    }
-
-    const dateQuery = {};
-    if (startDate) {
-        dateQuery.$gte = startDate;
-    }
-    if (endDate) {
-        dateQuery.$lt = endDate;
-    }
-    return dateQuery;
-}
-
-
-// --- Routes ---
-
-// Serve the main HTML file
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Link to user
+    completed: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 });
 
-// User Registration
-app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
+// Update `updatedAt` field on save
+taskSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
+});
+
+const User = mongoose.model('User', userSchema);
+const Category = mongoose.model('Category', categorySchema);
+const Task = mongoose.model('Task', taskSchema);
+
+// --- Authentication Middleware ---
+const verifyToken = (req, res, next) => {
+    // Check for token in x-auth-token header (or Authorization: Bearer token)
+    const token = req.header('x-auth-token') || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+
+    if (!token) {
+        return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
     try {
-        // Check if user already exists
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(409).json({ message: 'Username already taken.' });
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.userId = decoded.userId;
+        next();
+    } catch (err) {
+        console.error('Token verification error:', err.message);
+        res.status(401).json({ message: 'Token is not valid' });
+    }
+};
+
+// --- Routes ---
+
+// @route   POST /api/register
+// @desc    Register a new user
+// @access  Public
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        let user = await User.findOne({ username });
+        if (user) {
+            return res.status(400).json({ message: 'User already exists' });
         }
 
-        const user = new User({ username, password }); // Password will be hashed by pre-save hook
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        user = new User({ username, password: hashedPassword });
         await user.save();
 
-        // After successful registration, if you want this user to be the 'mock' user for testing
-        // You can set it in the process.env.MOCK_USER_ID
-        // This is for development convenience without full JWT.
-        if (!process.env.MOCK_USER_ID) {
-             process.env.MOCK_USER_ID = user._id.toString();
-             console.log('Registered user ID set as MOCK_USER_ID for testing:', process.env.MOCK_USER_ID);
-        }
+        // Optionally log in the user immediately after registration
+        const payload = { userId: user.id };
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(201).json({ message: 'Registration successful! Please log in.' });
+        res.status(201).json({ message: 'User registered successfully!', token, username: user.username });
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error during registration.' });
     }
 });
 
-// User Login
+// @route   POST /api/login
+// @desc    Authenticate user & get token
+// @access  Public
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
-    }
-
     try {
+        const { username, password } = req.body;
+
         const user = await User.findOne({ username });
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+            return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // --- IMPORTANT: MOCK PASSWORD CHECK ---
-        // In production, use bcrypt.compare(password, user.password)
-        const isMatch = (password === user.password); // MOCK: direct comparison
-        // const isMatch = await bcrypt.compare(password, user.password); // REAL: use bcrypt
-
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+            return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        process.env.MOCK_USER_ID = user._id.toString(); // Update mock user ID on successful login
-        console.log('User logged in. MOCK_USER_ID updated to:', process.env.MOCK_USER_ID);
+        const payload = { userId: user.id };
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(200).json({ message: 'Login successful (mock).' });
+        res.json({ message: 'Logged in successfully!', token, username: user.username });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error during login.' });
     }
 });
 
-// Categories API (Protected Routes)
-app.get('/api/categories', authenticateToken, async (req, res) => {
-    try {
-        const categories = await Category.find({ userId: req.userId });
-        res.status(200).json(categories);
-    } catch (error) {
-        console.error('Error fetching categories:', error);
-        res.status(500).json({ message: 'Failed to retrieve categories.' });
-    }
-});
+// --- Category Routes ---
 
-app.post('/api/categories', authenticateToken, async (req, res) => {
-    const { name } = req.body;
-    if (!name) {
-        return res.status(400).json({ message: 'Category name is required.' });
-    }
+// @route   POST /api/categories
+// @desc    Create a new category for the authenticated user
+// @access  Private
+app.post('/api/categories', verifyToken, async (req, res) => {
     try {
-        const category = new Category({ name, userId: req.userId });
-        await category.save();
-        res.status(201).json({ message: 'Category created successfully!', category });
+        const { name } = req.body;
+        const userId = req.userId; // Get userId from authenticated token
+
+        // Check if user already has a category with this name
+        const existingCategory = await Category.findOne({ name, userId });
+        if (existingCategory) {
+            return res.status(400).json({ message: 'You already have a category with this name.' });
+        }
+
+        const newCategory = new Category({ name, userId });
+        await newCategory.save();
+        res.status(201).json({ message: 'Category created successfully!', category: newCategory });
     } catch (error) {
         console.error('Error creating category:', error);
-        res.status(500).json({ message: 'Failed to create category.' });
+        res.status(400).json({ message: error.message });
     }
 });
 
-app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid category ID.' });
-    }
-
+// @route   GET /api/categories
+// @desc    Get all categories for the authenticated user
+// @access  Private
+app.get('/api/categories', verifyToken, async (req, res) => {
     try {
-        const category = await Category.findOneAndDelete({ _id: id, userId: req.userId });
+        // Fetch only categories belonging to the authenticated user
+        const categories = await Category.find({ userId: req.userId }).sort({ createdAt: 1 });
+        res.json(categories);
+    } catch (error) {
+        console.error('Error fetching categories:', error);
+        res.status(500).json({ message: 'Server error fetching categories.' });
+    }
+});
+
+// @route   DELETE /api/categories/:id
+// @desc    Delete a category by ID for the authenticated user
+// @access  Private
+app.delete('/api/categories/:id', verifyToken, async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const userId = req.userId;
+
+        // Find and delete the category, ensuring it belongs to the user
+        const category = await Category.findOneAndDelete({ _id: categoryId, userId: userId });
+
         if (!category) {
-            return res.status(404).json({ message: 'Category not found or not authorized.' });
+            return res.status(404).json({ message: 'Category not found or not authorized to delete.' });
         }
 
-        await Task.deleteMany({ category: id, userId: req.userId });
+        // Also delete all tasks associated with this category and user
+        await Task.deleteMany({ category: categoryId, userId: userId });
 
-        res.status(200).json({ message: 'Category and associated tasks deleted successfully!' });
+        res.json({ message: 'Category and associated tasks deleted successfully!' });
     } catch (error) {
         console.error('Error deleting category:', error);
-        res.status(500).json({ message: 'Failed to delete category.' });
+        res.status(500).json({ message: 'Server error deleting category.' });
     }
 });
 
-// Tasks API (Protected Routes)
-app.get('/api/tasks', authenticateToken, async (req, res) => {
+
+// --- Task Routes ---
+
+// @route   POST /api/tasks
+// @desc    Create a new task for the authenticated user
+// @access  Private
+app.post('/api/tasks', verifyToken, async (req, res) => {
     try {
-        const { search, dueDate } = req.query;
-        let query = { userId: req.userId };
+        const { title, description, dueDate, priority, category } = req.body;
+        const userId = req.userId; // Get userId from authenticated token
 
-        // Apply search filter
-        if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        // Apply due date filter
-        if (dueDate) {
-            const dateFilter = getDatesForFilter(dueDate);
-            if (Object.keys(dateFilter).length > 0) {
-                query.dueDate = dateFilter;
-            }
-            if (dueDate === 'overdue') {
-                query.completed = false; // Only show overdue if not completed
-            }
-        }
-
-        console.log('MongoDB Query (after filters):', JSON.stringify(query)); // Debugging line: Log the constructed query
-
-        const tasks = await Task.find(query).populate('category', 'name').sort({ dueDate: 1, createdAt: -1 }); // Sort by due date
-        console.log('Tasks retrieved from DB:', tasks.length, 'tasks'); // Debugging line: Log how many tasks were retrieved
-        if (tasks.length > 0) {
-            console.log('Sample of retrieved tasks details (first 3):', tasks.slice(0, 3)); // Log first few tasks for inspection
-        }
-
-        res.status(200).json(tasks);
-    } catch (error) {
-        console.error('Error fetching tasks:', error);
-        res.status(500).json({ message: 'Failed to retrieve tasks.' });
-    }
-});
-
-app.post('/api/tasks', authenticateToken, async (req, res) => {
-    const { title, description, priority, category, dueDate } = req.body;
-    if (!title || !category || !mongoose.Types.ObjectId.isValid(category)) {
-        return res.status(400).json({ message: 'Title and a valid category are required.' });
-    }
-
-    try {
-        const existingCategory = await Category.findOne({ _id: category, userId: req.userId });
+        // Validate if the category exists and belongs to the user
+        const existingCategory = await Category.findOne({ _id: category, userId: userId });
         if (!existingCategory) {
-            return res.status(404).json({ message: 'Category not found or not authorized.' });
+            return res.status(400).json({ message: 'Invalid category or category not found for your account.' });
         }
 
-        const task = new Task({
-            title,
-            description,
-            dueDate: dueDate ? new Date(dueDate) : null, // Convert to Date object
-            priority,
-            category,
-            userId: req.userId
-        });
-        await task.save();
-
-        await task.populate('category', 'name');
-        res.status(201).json({ message: 'Task created successfully!', task });
+        const newTask = new Task({ title, description, dueDate, priority, category, userId });
+        await newTask.save();
+        res.status(201).json({ message: 'Task created successfully!', task: newTask });
     } catch (error) {
         console.error('Error creating task:', error);
-        res.status(500).json({ message: 'Failed to create task.' });
+        res.status(400).json({ message: error.message });
     }
 });
 
-app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params;
-    const { title, description, priority, category, completed, dueDate } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid task ID.' });
-    }
-
+// @route   GET /api/tasks
+// @desc    Get all tasks for the authenticated user, with optional filters
+// @access  Private
+app.get('/api/tasks', verifyToken, async (req, res) => {
     try {
-        // If category is being updated, verify it belongs to the user
-        if (category && !mongoose.Types.ObjectId.isValid(category)) {
-             return res.status(400).json({ message: 'Invalid category ID format.' });
+        const { search, dueDate } = req.query;
+        let query = { userId: req.userId }; // ALL queries MUST be scoped by userId
+
+        // Search filter (title or description)
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            query.$or = [{ title: searchRegex }, { description: searchRegex }];
         }
+
+        // Due date filter
+        if (dueDate) {
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0); // Start of today UTC
+
+            switch (dueDate) {
+                case 'today':
+                    const tomorrow = new Date(today);
+                    tomorrow.setUTCDate(today.getUTCDate() + 1);
+                    query.dueDate = { $gte: today.toISOString(), $lt: tomorrow.toISOString() };
+                    break;
+                case 'this-week': // Sunday to Saturday of current week
+                    const firstDayOfWeek = new Date(today);
+                    firstDayOfWeek.setUTCDate(today.getUTCDate() - today.getUTCDay()); // Go to Sunday
+                    firstDayOfWeek.setUTCHours(0, 0, 0, 0);
+
+                    const lastDayOfWeek = new Date(firstDayOfWeek);
+                    lastDayOfWeek.setUTCDate(firstDayOfWeek.getUTCDate() + 7); // Go to next Sunday
+                    lastDayOfWeek.setUTCHours(0, 0, 0, 0);
+
+                    query.dueDate = { $gte: firstDayOfWeek.toISOString(), $lt: lastDayOfWeek.toISOString() };
+                    break;
+                case 'upcoming': // From today onwards
+                    query.dueDate = { $gte: today.toISOString() };
+                    break;
+                case 'overdue': // Before today
+                    query.dueDate = { $lt: today.toISOString() };
+                    break;
+                // 'all' is handled by no dueDate filter being applied
+            }
+        }
+        
+        console.log('MongoDB Query (after filters):', JSON.stringify(query));
+        const tasks = await Task.find(query).populate('category').sort({ createdAt: -1 });
+        console.log(`Tasks retrieved from DB: ${tasks.length} tasks`);
+        if (tasks.length > 0) {
+            console.log('Sample of retrieved tasks details (first 3):', tasks.slice(0, 3).map(t => ({
+                _id: t._id,
+                title: t.title,
+                description: t.description,
+                dueDate: t.dueDate,
+                priority: t.priority,
+                category: t.category ? { _id: t.category._id, name: t.category.name } : 'N/A',
+                userId: t.userId,
+                completed: t.completed
+            })));
+        }
+
+        res.json(tasks);
+    } catch (error) {
+        console.error('Error fetching tasks:', error);
+        res.status(500).json({ message: 'Server error fetching tasks.' });
+    }
+});
+
+// @route   PUT /api/tasks/:id
+// @desc    Update a task by ID for the authenticated user
+// @access  Private
+app.put('/api/tasks/:id', verifyToken, async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        const userId = req.userId; // Get userId from authenticated token
+        const { title, description, dueDate, priority, category, completed } = req.body;
+
+        // Validate if the new category exists and belongs to the user
         if (category) {
-            const existingCategory = await Category.findOne({ _id: category, userId: req.userId });
+            const existingCategory = await Category.findOne({ _id: category, userId: userId });
             if (!existingCategory) {
-                return res.status(404).json({ message: 'Category not found or not authorized.' });
+                return res.status(400).json({ message: 'Invalid category or category not found for your account.' });
             }
         }
 
+        // Find and update the task, ensuring it belongs to the user
+        const updatedTask = await Task.findOneAndUpdate(
+            { _id: taskId, userId: userId }, // Query by both _id and userId
+            { title, description, dueDate, priority, category, completed, updatedAt: Date.now() },
+            { new: true, runValidators: true } // Return the updated document, run schema validators
+        ).populate('category');
 
-        const updateData = {
-            title,
-            description,
-            priority,
-            category,
-            completed,
-            dueDate: dueDate ? new Date(dueDate) : null // Convert to Date object
-        };
-
-        // Remove undefined fields from updateData so Mongoose doesn't try to set them to undefined
-        Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
-
-
-        const task = await Task.findOneAndUpdate(
-            { _id: id, userId: req.userId },
-            updateData,
-            { new: true, runValidators: true }
-        ).populate('category', 'name');
-
-        if (!task) {
-            return res.status(404).json({ message: 'Task not found or not authorized.' });
+        if (!updatedTask) {
+            return res.status(404).json({ message: 'Task not found or not authorized to update.' });
         }
-
-        res.status(200).json({ message: 'Task updated successfully!', task });
+        res.json({ message: 'Task updated successfully!', task: updatedTask });
     } catch (error) {
         console.error('Error updating task:', error);
-        res.status(500).json({ message: 'Failed to update task.' });
+        res.status(400).json({ message: error.message });
     }
 });
 
-app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid task ID.' });
-    }
-
+// @route   DELETE /api/tasks/:id
+// @desc    Delete a task by ID for the authenticated user
+// @access  Private
+app.delete('/api/tasks/:id', verifyToken, async (req, res) => {
     try {
-        const task = await Task.findOneAndDelete({ _id: id, userId: req.userId });
-        if (!task) {
-            return res.status(404).json({ message: 'Task not found or not authorized.' });
+        const taskId = req.params.id;
+        const userId = req.userId;
+
+        // Find and delete the task, ensuring it belongs to the user
+        const deletedTask = await Task.findOneAndDelete({ _id: taskId, userId: userId });
+
+        if (!deletedTask) {
+            return res.status(404).json({ message: 'Task not found or not authorized to delete.' });
         }
-        res.status(200).json({ message: 'Task deleted successfully!' });
+        res.json({ message: 'Task deleted successfully!' });
     } catch (error) {
         console.error('Error deleting task:', error);
-        res.status(500).json({ message: 'Failed to delete task.' });
+        res.status(500).json({ message: 'Server error deleting task.' });
     }
 });
 
-// --- Start the Server ---
+// Catch-all for unhandled routes (optional)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start the server
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Access the application at http://localhost:${PORT}`);
 });
