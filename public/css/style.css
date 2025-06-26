@@ -1,0 +1,700 @@
+/* public/css/style.css */
+
+/* General Body Styling (dark theme) */
+body {
+    background-color: #0d1117; /* Very dark blue/black background */
+    color: #E0E0E0; /* Light gray text for contrast */
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* Ensure body takes full viewport height */
+    margin: 0;
+    padding: 20px; /* Add some padding around the content */
+    box-sizing: border-box; /* Include padding in element's total width and height */
+}
+
+/* Custom Scrollbar for overflow elements */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1f242c; /* Darker track */
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4a5568; /* Grayish thumb */
+    border-radius: 10px;
+    border: 2px solid #1f242c; /* Border to match track */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #6a7486; /* Lighter gray on hover */
+}
+
+/* Container for the main application block */
+.container {
+    background-color: #161b22; /* Slightly lighter dark background for the container */
+    border-radius: 12px; /* More rounded corners */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); /* Deeper shadow */
+    padding: 0; /* Remove padding from container, handled by inner sections */
+    width: 100%;
+    max-width: 1200px;
+    min-height: 700px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Ensure rounded corners are respected */
+}
+
+/* Auth forms specifically */
+.auth-form {
+    background-color: #1F242C; /* Darker shade for forms */
+    padding: 30px;
+    border-radius: 8px; /* Rounded corners for forms */
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2); /* Inner shadow for depth */
+}
+
+/* Top-level headings for auth section */
+h1 {
+    color: #FFFFFF;
+    font-weight: 700;
+    margin-bottom: 20px;
+    font-size: 2.5rem;
+}
+
+/* Subheadings within forms/modals */
+h2, h3 {
+    color: #FFFFFF;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+
+
+/* Input, textarea, and select styling */
+input[type="text"],
+input[type="password"],
+input[type="date"], /* Added for due date */
+textarea,
+select {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    background-color: #0D1117;
+    color: #E0E0E0;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus, /* Added for due date */
+textarea:focus,
+select:focus {
+    border-color: #8B5CF6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.5);
+    outline: none;
+}
+
+/* Label styling */
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #B0B0B0;
+}
+
+/* Button styling */
+button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Specific button colors */
+button.bg-purple-600 { background-color: #8B5CF6; color: #FFFFFF; }
+button.bg-purple-600:hover { background-color: #7C3AED; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-blue-600 { background-color: #3B82F6; color: #FFFFFF; }
+button.bg-blue-600:hover { background-color: #2563EB; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-green-600 { background-color: #10B981; color: #FFFFFF; }
+button.bg-green-600:hover { background-color: #059669; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-red-600 { background-color: #EF4444; color: #FFFFFF; }
+button.bg-red-600:hover { background-color: #DC2626; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-yellow-600 { background-color: #FBBF24; color: #333; }
+button.bg-yellow-600:hover { background-color: #F59E0B; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-yellow-700 { background-color: #D97706; color: #FFF; }
+button.bg-yellow-700:hover { background-color: #B45309; transform: translateY(-1px); }
+
+button.bg-gray-500 { background-color: #6B7280; color: #FFFFFF; }
+button.bg-gray-500:hover { background-color: #4B5563; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); }
+
+button.bg-teal-600 { /* New filter button color */
+    background-color: #0D9488;
+    color: #FFFFFF;
+}
+button.bg-teal-600:hover {
+    background-color: #0F766E;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+button.bg-pink-600 { /* New task button color */
+    background-color: #DB2777;
+    color: #FFFFFF;
+}
+button.bg-pink-600:hover {
+    background-color: #BE185D;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+}
+
+
+/* App Section Styling (Logged in view) */
+#app-section {
+    padding: 0; /* No padding directly on app-section, handled by inner sections */
+    background-color: transparent; /* Make it transparent to use container's background */
+    box-shadow: none; /* Remove inner shadow */
+}
+
+/* Header Bar Styling */
+#app-header {
+    background-color: #1F242C; /* Darker header background */
+    padding: 20px 30px; /* Ample padding */
+    border-radius: 12px 12px 0 0; /* Rounded top corners, sharp bottom to align with search bar */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Subtle separator */
+}
+
+#app-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800; /* Extra bold for "TaskFlow" */
+    color: #A78BFA; /* Brighter purple for logo */
+    margin-bottom: 0;
+}
+
+#user-greeting {
+    font-size: 1.1rem;
+    color: #B0B0B0;
+    font-weight: 500;
+}
+
+#app-header nav button {
+    text-transform: none; /* Remove uppercase for header buttons */
+    letter-spacing: normal; /* Remove letter spacing */
+    font-weight: 500; /* Slightly less bold */
+    padding: 10px 15px; /* Adjust padding for compact header buttons */
+    box-shadow: none; /* Remove shadow for a flatter look */
+    transform: none; /* Remove hover transform */
+}
+
+#app-header nav button:hover {
+    opacity: 0.8;
+}
+
+/* Search and Filter Bar Styling */
+#search-filter-bar {
+    background-color: #1F242C; /* Same dark background as header */
+    padding: 20px 30px;
+    border-radius: 0 0 12px 12px; /* Rounded bottom corners, sharp top */
+    margin-bottom: 20px; /* Space below the bar */
+    box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.2); /* Inner shadow for depth */
+}
+
+#search-input {
+    background-color: #0D1117; /* Darker input field background */
+    padding-left: 40px; /* Space for icon */
+}
+
+#due-date-filter {
+    background-color: #0D1117;
+}
+
+#apply-filter-btn {
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Categories Filter Tabs (Horizontal Tabs for Filtering) */
+#categories-filter-tabs {
+    background-color: #1F242C; /* Match header/search bar background */
+    border-radius: 8px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px; /* Space between filter elements */
+    margin-bottom: 20px; /* Space before task list */
+}
+
+#categories-filter-tabs .category-button {
+    background-color: #3C424E; /* Darker grey for inactive category tabs */
+    color: #E0E0E0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: none; /* Remove button shadow for tabs */
+    transform: none; /* Remove hover transform */
+    border: 1px solid transparent;
+}
+
+#categories-filter-tabs .category-button:hover {
+    background-color: #4A505B;
+    border-color: #6B7280; /* Subtle border on hover */
+}
+
+#categories-filter-tabs .category-button.active {
+    background-color: #8B5CF6; /* Active category tab color */
+    color: #FFFFFF;
+    border-color: #A78BFA;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5); /* Glowing effect for active */
+    transform: translateY(-1px);
+}
+
+#categories-filter-tabs .category-button .delete-category-btn {
+    color: #E0E0E0; /* White icon on purple background for active tab */
+    opacity: 0.7;
+}
+#categories-filter-tabs .category-button.active .delete-category-btn:hover {
+    color: #FFF; /* White on hover for active tab's delete icon */
+    opacity: 1;
+}
+#categories-filter-tabs .category-button:not(.active) .delete-category-btn:hover {
+    color: #EF4444; /* Red on hover for inactive tab's delete icon */
+    opacity: 1;
+}
+
+
+/* Task List Container & Grid */
+#tasks-list-container {
+    background-color: #2D333B;
+    border-radius: 8px;
+    padding: 20px; /* Adjusted padding */
+    flex-grow: 1;
+    overflow-y: auto;
+    /* max-height handled by JS to dynamically fit remaining space */
+}
+
+#tasks-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem; /* Increased gap */
+}
+
+.task-card {
+    background-color: #3C424E;
+    padding: 20px;
+    border-radius: 10px; /* Slightly more rounded */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3); /* Deeper shadow */
+    transition: transform 0.2s ease, border-left-color 0.2s ease, box-shadow 0.2s ease;
+    border-left: 8px solid; /* Thicker for priority indication */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.task-card:hover {
+    transform: translateY(-7px); /* More pronounced lift */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.task-card h4 {
+    color: #FFF;
+    font-size: 1.4rem; /* Larger title */
+    font-weight: 700;
+    margin-bottom: 10px;
+    line-height: 1.3;
+}
+
+.task-card p {
+    color: #C0C0C0; /* Lighter text for description */
+    font-size: 0.98rem;
+    line-height: 1.7;
+    margin-bottom: 18px;
+    flex-grow: 1;
+}
+
+.task-card .task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem; /* Slightly larger meta text */
+    color: #A0A0A0; /* Subtle meta info color */
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.1); /* More visible separator */
+}
+
+.task-card .task-meta span {
+    margin-right: 12px;
+    margin-bottom: 6px;
+}
+
+/* Priority Colors (same as before) */
+.priority-high { border-color: #EF4444; }
+.priority-medium { border-color: #FBBF24; }
+.priority-low { border-color: #10B981; }
+
+.priority-high span.priority-text { color: #EF4444; font-weight: bold; }
+.priority-medium span.priority-text { color: #FBBF24; font-weight: bold; }
+.priority-low span.priority-text { color: #10B981; font-weight: bold; }
+
+
+/* Task Card Action Buttons */
+.task-card .flex.justify-end.space-x-2 {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.task-card button {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: 0.88rem; /* Slightly larger task buttons */
+    padding: 9px 14px;
+}
+
+.task-card button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Drag & Drop Styles */
+.task-card.dragging {
+    opacity: 0.5;
+    border: 2px dashed #8B5CF6; /* Purple dashed border while dragging */
+}
+
+.category-button.drag-over {
+    border: 2px solid #A78BFA; /* Highlight category button on drag over */
+    box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.5);
+}
+
+
+/* Modal styling (general) */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: #1F242C;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 2.5rem; /* More padding */
+    width: 100%;
+    max-width: 550px; /* Slightly wider modals */
+    position: relative;
+    transform: translateY(-30px); /* More pronounced slide-in */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.modal-content .close-modal-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #9CA3AF;
+    font-size: 2.2rem; /* Larger close button */
+    padding: 0;
+    cursor: pointer;
+    line-height: 1;
+    width: auto;
+    box-shadow: none;
+    transform: none;
+    transition: color 0.2s ease;
+}
+
+.modal-content .close-modal-btn:hover {
+    color: #FFF;
+}
+
+.modal-title {
+    font-size: 2rem; /* Larger modal title */
+    font-weight: 700;
+    color: #FFFFFF;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.modal-form button {
+    width: 100%;
+}
+
+/* Specific styling for existing categories list in Category Management Modal */
+#existing-categories-list .category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #3C424E;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #FFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#existing-categories-list .category-item button {
+    background: none;
+    padding: 5px 8px;
+    font-size: 0.8rem;
+    color: #EF4444;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: none;
+    transition: color 0.2s ease;
+}
+
+#existing-categories-list .category-item button:hover {
+    color: #DC2626;
+    transform: none;
+}
+
+
+/* Toast Notifications */
+#toast-container {
+    pointer-events: none;
+}
+
+.toast {
+    background-color: #333;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 250px;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    pointer-events: auto;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.hide {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+.toast-success { background-color: #10B981; }
+.toast-error { background-color: #EF4444; }
+.toast-info { background-color: #3B82F6; }
+
+.toast .toast-icon { margin-right: 10px; font-size: 1.2rem; }
+.toast .toast-message { flex-grow: 1; font-weight: 500; }
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .container {
+        padding: 0; /* Remove overall container padding for smaller screens */
+    }
+    .auth-form {
+        padding: 25px; /* Slightly less padding */
+    }
+    #auth-section {
+        padding: 20px; /* Add padding to auth section wrapper */
+        width: 100%;
+        margin: 0;
+    }
+    #app-section {
+        padding: 0; /* Remove internal padding */
+    }
+    #app-header, #search-filter-bar, #categories-filter-tabs, #tasks-list-container {
+        border-radius: 0; /* Remove border radius on sections for a full-width look */
+    }
+    #app-header {
+        flex-direction: column;
+        padding: 15px 20px;
+        text-align: center;
+    }
+    #app-header .flex-wrap {
+        justify-content: center; /* Center buttons on mobile */
+    }
+    #app-header nav button {
+        padding: 8px 12px; /* Smaller header buttons */
+        font-size: 0.85rem;
+    }
+    #search-filter-bar {
+        flex-direction: column;
+        padding: 15px 20px;
+    }
+    #search-input, #due-date-filter, #apply-filter-btn {
+        width: 100%; /* Full width for search components */
+    }
+    #categories-filter-tabs {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 15px 20px;
+        gap: 8px;
+    }
+    #categories-filter-tabs h2 {
+        margin-bottom: 5px;
+    }
+    #categories-list-horizontal {
+        width: 100%; /* Ensure horizontal list takes full width */
+        justify-content: center;
+    }
+    .category-button {
+        padding: 7px 14px;
+        font-size: 0.8rem;
+    }
+    #tasks-list {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Smaller task cards */
+        gap: 1rem;
+    }
+    .task-card {
+        padding: 15px;
+    }
+    .task-card h4 {
+        font-size: 1.2rem;
+    }
+    .task-card p {
+        font-size: 0.9rem;
+    }
+    .task-card button {
+        padding: 7px 10px;
+        font-size: 0.8rem;
+    }
+    .modal-content {
+        padding: 2rem;
+        max-width: 90%; /* Adjust modal width for smaller screens */
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        min-height: auto;
+        border-radius: 8px; /* Slightly less rounded overall container */
+    }
+    h1 {
+        font-size: 2rem;
+    }
+    h2 {
+        font-size: 1.5rem;
+    }
+    h3 {
+        font-size: 1.25rem;
+    }
+    .auth-form {
+        padding: 20px;
+    }
+    input[type="text"], input[type="password"], input[type="date"], textarea, select, button {
+        padding: 10px;
+    }
+    #app-header {
+        padding: 10px 15px;
+    }
+    #app-header h1 {
+        font-size: 2rem;
+    }
+    #user-greeting {
+        font-size: 0.9rem;
+        margin-left: 10px;
+    }
+    #app-header nav {
+        flex-direction: column; /* Stack header buttons vertically */
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    #app-header nav button {
+        width: 80%; /* Make header buttons wider */
+    }
+    #search-filter-bar {
+        padding: 10px 15px;
+    }
+    #categories-filter-tabs {
+        padding: 10px 15px;
+    }
+    #categories-filter-tabs h2 {
+        font-size: 1rem;
+    }
+    .category-button {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+    #tasks-list {
+        grid-template-columns: 1fr; /* Single column on very small screens */
+    }
+    .task-card {
+        padding: 12px;
+        border-left-width: 5px;
+    }
+    .task-card h4 {
+        font-size: 1.1rem;
+    }
+    .task-card p {
+        font-size: 0.85rem;
+    }
+    .task-card button {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+    .modal-content {
+        padding: 1.5rem;
+    }
+    .modal-title {
+        font-size: 1.5rem;
+    }
+    .modal-content .close-modal-btn {
+        font-size: 1.8rem;
+    }
+    #existing-categories-list .category-item {
+        font-size: 0.8rem;
+    }
+    #existing-categories-list .category-item button {
+        font-size: 0.7rem;
+    }
+}
