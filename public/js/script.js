@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtered Tasks Modal
     const filteredTasksModal = document.getElementById('filtered-tasks-modal');
-    const filteredTasksList = document.getElementById('filtered-tasks-list');
+    const filteredTasksList = document = document.getElementById('filtered-tasks-list');
 
     const taskModal = document.getElementById('task-modal'); // Existing task create/edit modal
     const taskModalTitle = document.getElementById('task-modal-title');
@@ -760,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 registerForm.classList.add('hidden');
                 loginForm['login-username'].value = username;
                 // Optionally auto-login after successful registration, if desired
-                // handleLoginSuccess(data); 
+                handleLoginSuccess(data); // UNCOMMENTED THIS LINE
             } else {
                 showToast(data.message || 'Registration failed.', 'error');
             }
