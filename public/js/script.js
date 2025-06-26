@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newCategoryNameInput = document.getElementById('new-category-name'); // Input within new category form
     const existingCategoriesList = document.getElementById('existing-categories-list'); // List for managing categories
 
-    // NEW: Filtered Tasks Modal
+    // Filtered Tasks Modal
     const filteredTasksModal = document.getElementById('filtered-tasks-modal');
     const filteredTasksList = document.getElementById('filtered-tasks-list');
 
@@ -61,6 +61,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let draggedTaskId = null; 
 
     // --- Utility Functions ---
+
+    /**
+     * Helper function to get authentication headers.
+     * @returns {HeadersInit} - Object containing Authorization header if token exists.
+     */
+    function getAuthHeaders() {
+        const token = localStorage.getItem('token');
+        return {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }) // Add token if it exists
+        };
+    }
 
     /**
      * Displays a toast notification.
@@ -169,7 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchCategories() {
         try {
             console.log('Fetching categories...');
-            const response = await fetch('/api/categories');
+            const response = await fetch('/api/categories', {
+                headers: getAuthHeaders() // Include auth headers
+            });
             if (!response.ok) {
                 console.error('API Error: Response not OK for categories', response.status, response.statusText);
                 const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -198,6 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching categories:', error);
             showToast('Failed to load categories.', 'error');
+            // If auth error, redirect to login
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout(); // Force logout if token is invalid or missing
+            }
         }
     }
 
@@ -225,21 +243,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (dueDateFilterValue && dueDateFilterValue !== 'all') {
                     params.append('dueDate', dueDateFilterValue);
                 }
-                // When applying search/date filters, we fetch ALL tasks matching those filters,
-                // regardless of the active category tab.
-                // The backend handles the filtering.
                 url = `/api/tasks?${params.toString()}`;
 
             } else { // Fetching for main display, only category filter applies
                 console.log('Client-side fetchTasks (for main view, by category):');
-                // The activeCategoryId filter is handled client-side by renderTasks()
-                // so the backend just needs to return all tasks for the user.
                 url = `/api/tasks`;
             }
 
             console.log('Fetching tasks from URL:', url);
 
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: getAuthHeaders() // Include auth headers
+            });
             if (!response.ok) {
                 console.error('API Error: Response not OK for tasks', response.status, response.statusText);
                 const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -262,6 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching tasks:', error);
             showToast('Failed to load tasks.', 'error');
+            // If auth error, redirect to login
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout(); // Force logout if token is invalid or missing
+            }
         }
     }
 
@@ -610,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/tasks/${draggedTaskId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // Include auth headers
                 body: JSON.stringify(updatedTaskData) 
             });
             const data = await response.json();
@@ -637,9 +656,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Handles successful user login.
+     * @param {object} authData - Object containing token and username.
      */
-    function handleLoginSuccess() {
+    function handleLoginSuccess(authData) {
         localStorage.setItem('loggedIn', 'true');
+        localStorage.setItem('username', authData.username); // Store username
+        localStorage.setItem('token', authData.token);     // Store JWT token
+
         if (authSection) authSection.classList.add('hidden');
         if (appSection) appSection.classList.remove('hidden');
 
@@ -655,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleLogout() {
         localStorage.removeItem('loggedIn');
         localStorage.removeItem('username');
+        localStorage.removeItem('token'); // Clear JWT token
         if (authSection) authSection.classList.remove('hidden');
         if (appSection) appSection.classList.add('hidden');
         loginForm.classList.remove('hidden');
@@ -693,14 +717,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // No token yet, but sets content-type
                 body: JSON.stringify({ username, password })
             });
             const data = await response.json();
 
             if (response.ok) {
-                localStorage.setItem('username', username);
-                handleLoginSuccess();
+                handleLoginSuccess(data); // Pass the data (including token and username)
             } else {
                 showToast(data.message || 'Login failed.', 'error');
             }
@@ -725,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/register', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // No token yet, but sets content-type
                 body: JSON.stringify({ username, password })
             });
             const data = await response.json();
@@ -736,6 +759,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
                 loginForm['login-username'].value = username;
+                // Optionally auto-login after successful registration, if desired
+                // handleLoginSuccess(data); 
             } else {
                 showToast(data.message || 'Registration failed.', 'error');
             }
@@ -790,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/categories', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // Include auth headers
                 body: JSON.stringify({ name })
             });
             const data = await response.json();
@@ -805,6 +830,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('New category form submission error:', error);
             showToast('Network error during category creation.', 'error');
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout();
+            }
         }
     });
 
@@ -820,7 +848,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(`/api/categories/${categoryId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders() // Include auth headers
             });
             const data = await response.json();
 
@@ -836,6 +865,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Delete category error:', error);
             showToast('Network error during category deletion.', 'error');
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout();
+            }
         }
     }
 
@@ -861,13 +893,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (taskId) {
                 response = await fetch(`/api/tasks/${taskId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(), // Include auth headers
                     body: JSON.stringify(taskData)
                 });
             } else {
                 response = await fetch('/api/tasks', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(), // Include auth headers
                     body: JSON.stringify(taskData)
                 });
             }
@@ -884,22 +916,22 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Task form submission error:', error);
             showToast('Network error during task operation.', 'error');
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout();
+            }
         }
     });
 
     // Edit Task Handler
     async function handleEditTask(e) {
         const taskId = e.target.closest('button').dataset.id;
-        const taskToEdit = currentTasks.find(task => task._id === taskId) || // Try main list
-                         currentTasks.find(task => task._id === taskId); // This line is redundant, but illustrates intent if tasks were separately stored
-                                                                    // For current logic, currentTasks holds all tasks fetched from server.
-
-        if (!taskToEdit && !filteredTasksModal.classList.contains('hidden')) {
-            // If not found in currentTasks, and filtered modal is open,
-            // find from tasks that might have been loaded specifically for the modal.
-            // (Assuming filteredTasksList would have its own data or it's just a rendering target for fetchedTasks)
-            // For simplicity, we refetch all tasks if it's not found, to be safe.
-            showToast('Task not found in current view. Refreshing data...', 'info');
+        const taskToEdit = currentTasks.find(task => task._id === taskId) || 
+                             (filteredTasksList.contains(e.target.closest('.task-card')) && 
+                              Array.from(filteredTasksList.children).find(card => card.dataset.taskId === taskId && card.taskData)); // Check filtered tasks data
+        
+        // Fallback: If task not found in current views, refetch all tasks and try again
+        if (!taskToEdit) {
+            showToast('Task not found in current view. Fetching latest data...', 'info');
             await fetchTasks(false); // Refetch all tasks
             taskToEdit = currentTasks.find(task => task._id === taskId);
         }
@@ -909,7 +941,6 @@ document.addEventListener('DOMContentLoaded', () => {
             taskModalTitle.textContent = 'Edit Task';
             taskTitleInput.value = taskToEdit.title;
             taskDescriptionTextarea.value = taskToEdit.description;
-            // Format due date for input[type="date"] (YYYY-MM-DD)
             taskDueDateInput.value = taskToEdit.dueDate ? new Date(taskToEdit.dueDate).toISOString().split('T')[0] : '';
             taskPrioritySelect.value = taskToEdit.priority;
             
@@ -938,7 +969,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch(`/api/tasks/${taskId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders() // Include auth headers
             });
             const data = await response.json();
 
@@ -955,6 +987,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Delete task error:', error);
             showToast('Network error during task deletion.', 'error');
+            if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
+                handleLogout();
+            }
         }
     }
 
@@ -978,7 +1013,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Initial Check on Load ---
-    if (localStorage.getItem('loggedIn') === 'true') {
-        handleLoginSuccess();
+    // Check if the user was previously logged in and has a token
+    if (localStorage.getItem('loggedIn') === 'true' && localStorage.getItem('token')) {
+        // Attempt to verify token by fetching categories; if token invalid, will trigger logout
+        fetchCategories(); 
     }
 });
