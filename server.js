@@ -78,18 +78,29 @@ const verifyToken = (req, res, next) => {
     // Check for token in x-auth-token header (or Authorization: Bearer token)
     const token = req.header('x-auth-token') || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
 
+    console.log('--- verifyToken middleware ---');
+    console.log('Received Token:', token ? token.substring(0, 10) + '...' : 'No Token Received'); // Log first 10 chars
+
     if (!token) {
+        console.log('verifyToken: No token provided.');
         return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    if (!JWT_SECRET) {
+        console.error('verifyToken: JWT_SECRET is not defined on the server!');
+        return res.status(500).json({ message: 'Server configuration error: JWT secret not found.' });
     }
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
+        console.log('verifyToken: Token successfully verified for userId:', req.userId);
         next();
     } catch (err) {
-        console.error('Token verification error:', err.message);
+        console.error('verifyToken: Token verification failed:', err.message);
         res.status(401).json({ message: 'Token is not valid' });
     }
+    console.log('--- End verifyToken middleware ---');
 };
 
 // --- Routes ---
