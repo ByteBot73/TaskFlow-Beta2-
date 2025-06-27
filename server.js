@@ -7,8 +7,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
-const MONGODB_URI = process.env.MONGODB_URI;
+const JWT_SECRET = process.env.JWT_SECRET; // Make sure this is set in Render's environment variables
+const MONGODB_URI = process.env.MONGODB_URI; // Make sure this is set in Render's environment variables
 
 // Middleware
 app.use(express.json()); // For parsing application/json
@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => {
-        console.error('MongoDB connection error:', err);
+        console.error('MongoDB connection error: Check MONGODB_URI environment variable.', err.message);
         // Exit process if DB connection fails
         process.exit(1); 
     });
@@ -76,18 +76,21 @@ const Task = mongoose.model('Task', taskSchema);
 // --- Authentication Middleware ---
 const verifyToken = (req, res, next) => {
     // Check for token in x-auth-token header (or Authorization: Bearer token)
-    const token = req.header('x-auth-token') || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.header('x-auth-token');
 
     console.log('--- verifyToken middleware ---');
-    console.log('Received Token:', token ? token.substring(0, 10) + '...' : 'No Token Received'); // Log first 10 chars
+    console.log('Received Auth Header:', authHeader || 'None');
+    console.log('Extracted Token (first 10 chars):', token ? token.substring(0, 10) + '...' : 'No Token Extracted');
 
     if (!token) {
-        console.log('verifyToken: No token provided.');
+        console.log('verifyToken: No token provided in headers.');
         return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
     if (!JWT_SECRET) {
-        console.error('verifyToken: JWT_SECRET is not defined on the server!');
+        console.error('verifyToken: JWT_SECRET environment variable is not defined on the server!');
+        // This might indicate a missing .env variable on Render.
         return res.status(500).json({ message: 'Server configuration error: JWT secret not found.' });
     }
 
@@ -97,7 +100,9 @@ const verifyToken = (req, res, next) => {
         console.log('verifyToken: Token successfully verified for userId:', req.userId);
         next();
     } catch (err) {
-        console.error('verifyToken: Token verification failed:', err.message);
+        console.error('verifyToken: Token verification failed. Error:', err.message);
+        // Log the actual JWT_SECRET length for debugging, but not the secret itself
+        console.error('JWT_SECRET length:', JWT_SECRET.length);
         res.status(401).json({ message: 'Token is not valid' });
     }
     console.log('--- End verifyToken middleware ---');
@@ -123,9 +128,8 @@ app.post('/api/register', async (req, res) => {
         user = new User({ username, password: hashedPassword });
         await user.save();
 
-        // Optionally log in the user immediately after registration
         const payload = { userId: user.id };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' }); // Increased expiry for easier testing
 
         res.status(201).json({ message: 'User registered successfully!', token, username: user.username });
     } catch (error) {
@@ -152,7 +156,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         const payload = { userId: user.id };
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' }); // Increased expiry for easier testing
 
         res.json({ message: 'Logged in successfully!', token, username: user.username });
     } catch (error) {

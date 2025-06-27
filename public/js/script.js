@@ -1,6 +1,14 @@
 // public/js/script.js
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Initial localStorage check on page load ---
+    console.log('Client: DOMContentLoaded - Checking localStorage on page load.');
+    const initialLoggedIn = localStorage.getItem('loggedIn');
+    const initialToken = localStorage.getItem('token');
+    console.log('Client: localStorage.loggedIn:', initialLoggedIn);
+    console.log('Client: localStorage.token:', initialToken ? 'present' : 'absent');
+
+
     // --- DOM Elements ---
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
@@ -34,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtered Tasks Modal
     const filteredTasksModal = document.getElementById('filtered-tasks-modal');
-    const filteredTasksList = document.getElementById('filtered-tasks-list'); // Corrected redundant assignment
+    const filteredTasksList = document.getElementById('filtered-tasks-list');
 
     const taskModal = document.getElementById('task-modal'); // Existing task create/edit modal
     const taskModalTitle = document.getElementById('task-modal-title');
@@ -68,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function getAuthHeaders() {
         const token = localStorage.getItem('token');
+        console.log('Client: getAuthHeaders called. Token present in localStorage:', !!token); // Added debug log
         return {
             'Content-Type': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` }) // Add token if it exists
@@ -167,9 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentCategories.length === 0) {
             newTaskBtnHeader.disabled = true;
             newTaskBtnHeader.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
+            console.log('Client: New Task button disabled (no categories).'); // Added debug log
         } else {
             newTaskBtnHeader.disabled = false;
             newTaskBtnHeader.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+            console.log('Client: New Task button enabled (categories exist).'); // Added debug log
         }
     }
 
@@ -179,42 +190,47 @@ document.addEventListener('DOMContentLoaded', () => {
      * Fetches all categories for the current user.
      */
     async function fetchCategories() {
+        console.log('Client: fetchCategories initiated.'); // Debug log
         try {
-            console.log('Fetching categories...');
             const response = await fetch('/api/categories', {
                 headers: getAuthHeaders() // Include auth headers
             });
             if (!response.ok) {
-                console.error('API Error: Response not OK for categories', response.status, response.statusText);
-                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                const errorData = await response.json().catch(() => ({ message: `Server responded with status ${response.status}` }));
+                console.error('Client: API Error fetching categories:', response.status, response.statusText, errorData); // Enhanced debug log
+                // Explicitly check for 401 status
+                if (response.status === 401) {
+                    console.log('Client: Received 401 for categories, triggering logout.');
+                    handleLogout();
+                    return; // Prevent further execution in this function
+                }
                 throw new Error(`Failed to fetch categories: ${errorData.message || response.statusText}`);
             }
             currentCategories = await response.json();
-            console.log('Categories fetched:', currentCategories);
+            console.log('Client: Categories fetched successfully:', currentCategories); // Debug log
             renderCategories(); // Render categories in the filter bar
             renderExistingCategoriesList(); // Render categories in the management modal
             populateCategorySelect(); // Populate the dropdown in task modal
             updateNewTaskButtonState(); // Update task button state
 
-            // Set a default active category if none is selected and categories exist
             if (currentCategories.length > 0) {
                 const previouslyActiveCategoryExists = currentCategories.some(cat => cat._id === activeCategoryId);
                 if (activeCategoryId === 'all' || previouslyActiveCategoryExists) {
-                    setActiveCategory(activeCategoryId); // Re-activate 'all' or the previous category
+                    setActiveCategory(activeCategoryId);
                 } else {
                     setActiveCategory('all');
                 }
-            } else { // No categories exist at all
-                setActiveCategory('all'); // Ensure 'All Tasks' button is active
+            } else {
+                setActiveCategory('all');
             }
-            // Initial fetch of tasks for the main view without filters
-            fetchTasks(false); // Pass false to indicate no filters applied from search/date bar
+            fetchTasks(false); // Initial fetch of tasks for the main view without filters
         } catch (error) {
-            console.error('Error fetching categories:', error);
+            console.error('Client: Error during fetchCategories:', error.message); // Debug log
             showToast('Failed to load categories.', 'error');
-            // If auth error, redirect to login
+            // General error, check if it implies auth issue. Redundant with 401 check above but kept as fallback.
             if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
-                handleLogout(); // Force logout if token is invalid or missing
+                console.log('Client: Triggering logout due to authorization error (general check):', error.message);
+                handleLogout();
             }
         }
     }
@@ -225,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * If false, fetches tasks based only on active category.
      */
     async function fetchTasks(applySearchAndDateFilters = false) {
+        console.log('Client: fetchTasks initiated. Applying filters:', applySearchAndDateFilters); // Debug log
         try {
             let url = '/api/tasks';
             const params = new URLSearchParams();
@@ -232,54 +249,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const dueDateFilterValue = dueDateFilter.value;
 
             if (applySearchAndDateFilters) {
-                // Debugging: Log values before making the API call
-                console.log('Client-side fetchTasks (with search/date filters):');
-                console.log('  searchQuery:', searchQuery);
-                console.log('  dueDateFilterValue:', dueDateFilterValue);
-
-                if (searchQuery) {
-                    params.append('search', searchQuery);
-                }
-                if (dueDateFilterValue && dueDateFilterValue !== 'all') {
-                    params.append('dueDate', dueDateFilterValue);
-                }
+                if (searchQuery) params.append('search', searchQuery);
+                if (dueDateFilterValue && dueDateFilterValue !== 'all') params.append('dueDate', dueDateFilterValue);
                 url = `/api/tasks?${params.toString()}`;
-
-            } else { // Fetching for main display, only category filter applies
-                console.log('Client-side fetchTasks (for main view, by category):');
-                url = `/api/tasks`;
             }
 
-            console.log('Fetching tasks from URL:', url);
-
+            console.log('Client: Fetching tasks from URL:', url); // Debug log
             const response = await fetch(url, {
                 headers: getAuthHeaders() // Include auth headers
             });
             if (!response.ok) {
-                console.error('API Error: Response not OK for tasks', response.status, response.statusText);
-                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                const errorData = await response.json().catch(() => ({ message: `Server responded with status ${response.status}` }));
+                console.error('Client: API Error fetching tasks:', response.status, response.statusText, errorData); // Enhanced debug log
+                // Explicitly check for 401 status
+                if (response.status === 401) {
+                    console.log('Client: Received 401 for tasks, triggering logout.');
+                    handleLogout();
+                    return; // Prevent further execution in this function
+                }
                 throw new Error(`Failed to fetch tasks: ${errorData.message || response.statusText}`);
             }
             const fetchedTasks = await response.json();
-            console.log('Tasks fetched:', fetchedTasks);
+            console.log('Client: Tasks fetched successfully:', fetchedTasks); // Debug log
 
             if (applySearchAndDateFilters) {
                 renderTasksInFilteredModal(fetchedTasks);
             } else {
-                currentTasks = fetchedTasks; // Update global currentTasks for main view
-                renderTasks(); // Render tasks based on activeCategoryId from the updated currentTasks
+                currentTasks = fetchedTasks;
+                renderTasks();
             }
             
             if (fetchedTasks.length === 0 && (searchQuery || dueDateFilterValue !== 'all')) {
-                console.warn('No tasks found matching the current filters.');
+                console.warn('Client: No tasks found matching the current filters.');
             }
 
         } catch (error) {
-            console.error('Error fetching tasks:', error);
+            console.error('Client: Error during fetchTasks:', error.message); // Debug log
             showToast('Failed to load tasks.', 'error');
-            // If auth error, redirect to login
+            // General error, check if it implies auth issue. Redundant with 401 check above but kept as fallback.
             if (error.message.includes('authorization denied') || error.message.includes('Token is not valid')) {
-                handleLogout(); // Force logout if token is invalid or missing
+                console.log('Client: Triggering logout due to authorization error (general check):', error.message);
+                handleLogout();
             }
         }
     }
@@ -659,10 +669,16 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {object} authData - Object containing token and username.
      */
     function handleLoginSuccess(authData) {
-        localStorage.setItem('loggedIn', 'true');
-        localStorage.setItem('username', authData.username); // Store username
-        localStorage.setItem('token', authData.token);     // Store JWT token
-        console.log('Login Success: Token and Username stored in localStorage.'); // Debugging log
+        // Only set localStorage items if authData is provided (i.e., it's a fresh login/registration)
+        if (authData) {
+            localStorage.setItem('loggedIn', 'true');
+            localStorage.setItem('username', authData.username); // Store username
+            localStorage.setItem('token', authData.token);     // Store JWT token
+            console.log('Client: Login Success: Token and Username stored in localStorage.'); // Debugging log
+        }
+        
+        console.log('Client: handleLoginSuccess executed.');
+        console.log('Client: localStorage current state - loggedIn:', localStorage.getItem('loggedIn'), 'token:', localStorage.getItem('token') ? 'present' : 'absent'); // Detailed localStorage check
 
         if (authSection) authSection.classList.add('hidden');
         if (appSection) appSection.classList.remove('hidden');
@@ -677,10 +693,12 @@ document.addEventListener('DOMContentLoaded', () => {
      * Handles user logout.
      */
     function handleLogout() {
-        console.log('Logging out: Clearing localStorage.'); // Debugging log
+        console.log('Client: handleLogout initiated. Clearing localStorage.'); // Debugging log
         localStorage.removeItem('loggedIn');
         localStorage.removeItem('username');
         localStorage.removeItem('token'); // Clear JWT token
+        console.log('Client: localStorage cleared - loggedIn:', localStorage.getItem('loggedIn'), 'token:', localStorage.getItem('token') ? 'present' : 'absent'); // Detailed localStorage check
+
         if (authSection) authSection.classList.remove('hidden');
         if (appSection) appSection.classList.add('hidden');
         loginForm.classList.remove('hidden');
@@ -761,14 +779,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
                 loginForm['login-username'].value = username;
-                // Optionally auto-login after successful registration, if desired
                 handleLoginSuccess(data); // This line auto-logs in the user after registration
             } else {
                 showToast(data.message || 'Registration failed.', 'error');
             }
         } catch (error) {
             console.error('Registration error:', error);
-            showToast('Network error during registration. Please try again.', 'error');
+            showToast('Network error during registration.', 'error');
         }
     });
 
@@ -1016,8 +1033,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Check on Load ---
     // Check if the user was previously logged in and has a token
-    if (localStorage.getItem('loggedIn') === 'true' && localStorage.getItem('token')) {
-        // Attempt to verify token by fetching categories; if token invalid, will trigger logout
-        fetchCategories(); 
+    if (initialLoggedIn === 'true' && initialToken) {
+        console.log('Client: Initial check found loggedIn=true and token. Attempting to restore session.');
+        handleLoginSuccess(); // Call handleLoginSuccess to update UI and fetch data
+    } else {
+        console.log('Client: Initial check did NOT find loggedIn=true or token. Displaying auth section.');
+        // Ensure auth section is visible if not logged in
+        if (authSection) authSection.classList.remove('hidden');
+        if (appSection) appSection.classList.add('hidden');
     }
 });
